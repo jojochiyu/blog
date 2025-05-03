@@ -1,32 +1,48 @@
-name: Deploy to GitHub Pages
+name: Deploy blog to GitHub Pages
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: read
   pages: write
   id-token: write
 
 jobs:
-  build:
+  build-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Zola
-        run: sudo snap install --edge zola
-      - name: Build site
-        run: zola build --output-dir public
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./public
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
+    - uses: actions/checkout@v4
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: zola@latest
+
+    # - uses: actions/cache@v3
+    #   with:
+    #     path: ~/.cache/zola
+    #     key: zola-${{ runner.os }}-${{ github.sha }}
+    #     restore-keys: zola-${{ runner.os }}-
+
+    - name: Build site
+      run: zola build       # 输出目录默认为 public/
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: public
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      with:
+        folder: public
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+
